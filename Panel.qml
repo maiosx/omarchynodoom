@@ -285,18 +285,32 @@ Panel {
               onClicked: root.npost.acceptPrefill()
             }
 
-            Button {
+            Rectangle {
               id: postButton
               anchors.right: parent.right
               visible: !root.pendingReplace
-              text: root.posting ? "Opening…" : root.actionLabel
-              selected: true
-              focusable: true
-              foreground: "#f4f1ea"
-              fontFamily: root.serifFamily
-              fontSize: 14
-              enabled: root.canSubmit
-              onClicked: root.submit()
+              implicitWidth: postLabel.implicitWidth + 32
+              implicitHeight: postLabel.implicitHeight + 16
+              radius: height / 2
+              color: "#ffffff"
+              opacity: root.canSubmit ? 1 : 0.35
+
+              Text {
+                id: postLabel
+                anchors.centerIn: parent
+                text: root.posting ? "Opening…" : root.actionLabel
+                color: "#000000"
+                font.family: "Helvetica"
+                font.pixelSize: 14
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                enabled: root.canSubmit
+                hoverEnabled: true
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: root.submit()
+              }
             }
           }
         }
