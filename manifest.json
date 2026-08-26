@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nodoom.composer",
   "name": "Nodoom composer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Nodoom composer",
   "description": "Compose Nodoom posts from the Omarchy bar with a browser handoff. No API keys.",
   "kinds": [
@@ -16,7 +16,7 @@
   },
   "barWidget": {
     "displayName": "Nodoom composer",
-    "description": "One-click post composer anchored to the bar.",
+    "description": "Fullscreen Nodoom composer overlay from the bar.",
     "category": "Network",
     "allowMultiple": false,
     "defaultSection": "right"

@@ -6,8 +6,9 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Per-monitor presentation for the singleton composer service. Enter submits,
-// Shift+Enter inserts a newline, and Escape dismisses the panel.
+// Per-monitor presentation for the singleton composer service. The
+// composer is a fullscreen overlay. Enter submits, Shift+Enter inserts
+// a newline, and Escape dismisses.
 Panel {
   id: root
   moduleName: "nodoom.composer"
@@ -37,12 +38,22 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
+  readonly property var hostScreen: {
+    var win = button.QsWindow ? button.QsWindow.window : null
+    return win && win.screen ? win.screen : null
+  }
+
   onOpenedChanged: {
     if (opened && serviceReady) npost.refreshMode()
   }
 
   function submit() {
     if (serviceReady) npost.submit()
+  }
+
+  function dismiss() {
+    if (serviceReady) npost.declinePrefill()
+    root.close()
   }
 
   // Prefill the shared draft and open this monitor's presentation. The
@@ -108,16 +119,18 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: composer
-    contentWidth: panel.fittedContentWidth(Style.space(400))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(560))
+    contentWidth: panel.fittedContentWidth(root.hostScreen ? root.hostScreen.width : Style.space(1600))
+    contentHeight: panel.fittedContentHeight(root.hostScreen ? root.hostScreen.height : Style.space(1000))
 
-    Column {
-      id: panelColumn
+    Item {
+      id: panelBody
       anchors.fill: parent
-      spacing: Style.spacing.controlGap
 
       Item {
-        width: parent.width
+        id: header
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         height: headerLabel.implicitHeight
 
         Text {
@@ -147,8 +160,12 @@ Panel {
 
       TextArea {
         id: composer
-        width: parent.width
-        height: Style.space(120)
+        anchors.top: header.bottom
+        anchors.topMargin: Style.spacing.controlGap
+        anchors.bottom: footer.top
+        anchors.bottomMargin: Style.spacing.controlGap
+        anchors.left: parent.left
+        anchors.right: parent.right
         text: root.serviceReady ? root.npost.draft : ""
         enabled: root.serviceReady
         readOnly: !root.serviceReady || !root.npost.ready || root.posting
@@ -191,7 +208,7 @@ Panel {
 
         Keys.onEscapePressed: function(event) {
           event.accepted = true
-          root.close()
+          root.dismiss()
         }
         Keys.onReturnPressed: function(event) {
           if (event.modifiers & Qt.ShiftModifier) return
@@ -206,11 +223,27 @@ Panel {
       }
 
       Item {
-        width: parent.width
+        id: footer
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         height: postButton.implicitHeight
 
-        Text {
+        Button {
+          id: closeButton
           anchors.left: parent.left
+          text: "Close"
+          focusable: true
+          foreground: root.fg
+          fontFamily: root.family
+          fontSize: Style.font.body
+          enabled: !root.posting
+          onClicked: root.dismiss()
+        }
+
+        Text {
+          anchors.left: closeButton.right
+          anchors.leftMargin: Style.spacing.controlGap
           anchors.right: root.pendingReplace ? keepButton.left : postButton.left
           anchors.rightMargin: Style.spacing.controlGap
           anchors.verticalCenter: parent.verticalCenter
