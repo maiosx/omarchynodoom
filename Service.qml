@@ -22,7 +22,7 @@ QtObject {
   property string lastPersistedDraft: ""
   property int draftStorageRevision: 0
   property string pendingPrefill: ""
-  readonly property int maxText: 5000
+  readonly property int maxText: 500
 
   property bool posting: false
   property bool finalizingDraft: false
@@ -476,7 +476,7 @@ QtObject {
     if (!ready) return "not-ready"
     var next = String(text || "")
     if (next.length > maxText) {
-      statusText = "Incoming text is over the 5,000-character limit"
+      statusText = "Incoming text is over the 500-character limit"
       statusError = true
       return "too-long"
     }

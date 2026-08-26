@@ -61,7 +61,7 @@ XDG_OPEN_TIMEOUT = 20  # seconds
 WORKER_NEVER_STARTED_GRACE = 60  # seconds
 STALE_JOB_AGE = 6 * 3600  # any job older than this is reaped
 GC_AGE = 7 * 86400  # finished job dirs are garbage-collected after a week
-MAX_TEXT = 5000  # Nodoom composer content maxLength
+MAX_TEXT = 500
 
 TERMINAL_STATES = frozenset({"posted", "handoff", "rejected", "unknown"})
 _JOB_ID_RE = re.compile(r"^[0-9]{8}-[0-9]{6}-[a-f0-9]{8}$")
@@ -522,7 +522,7 @@ def cmd_enqueue() -> int:
     if not isinstance(text, str) or not text.strip():
         raise BackendError("input", "field 'text' must be a non-empty string")
     if len(text) > MAX_TEXT:
-        raise BackendError("input", f"post text exceeds Nodoom's {MAX_TEXT}-character limit")
+        raise BackendError("input", f"post text exceeds the {MAX_TEXT}-character limit")
     m = compute_mode(load_config())
     expected_mode = payload.get("expectedMode")
     if expected_mode is not None:
@@ -693,7 +693,7 @@ def cmd_draft(argv: list[str]) -> int:
         if not isinstance(next_text, str):
             raise BackendError("input", "field 'text' must be a string")
         if len(next_text) > MAX_TEXT:
-            raise BackendError("input", f"post text exceeds Nodoom's {MAX_TEXT}-character limit")
+            raise BackendError("input", f"post text exceeds the {MAX_TEXT}-character limit")
         with _draft_lock():
             _, revision = _draft_record()
             next_revision = revision + 1

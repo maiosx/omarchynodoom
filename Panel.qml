@@ -28,7 +28,7 @@ Panel {
     && !npost.posting && String(npost.draft || "").trim().length > 0
   readonly property int charCount: serviceReady ? String(npost.draft || "").length : 0
   readonly property int charLimit: serviceReady && typeof npost.maxText === "number"
-    ? npost.maxText : 5000
+    ? npost.maxText : 500
   readonly property bool pendingReplace: serviceReady
     && String(npost.pendingPrefill || "").length > 0
 
