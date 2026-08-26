@@ -2,17 +2,9 @@
 
 Compose Nodoom posts from the Omarchy bar.
 
+![Nodoom composer opened from the Omarchy bar, draft already filled](preview.png)
+
 Adapted from [bitr0t.omarchytweet](https://github.com/rmacy/omarchytweet) — same job queue, same private redirect handoff, same draft persistence. Nodoom has no public write API, so this plugin is **browser handoff only**.
-
-## Screenshots
-
-### Bar widget
-
-![Nodoom composer icon alongside Omarchy system widgets](screenshots/bar-widget.png)
-
-### Composer popover
-
-![Themed Nodoom composer popover with a sample post](screenshots/composer-popover.png)
 
 ## Posting mode
 
@@ -79,8 +71,7 @@ Panel.qml               Per-monitor composer UI
 manifest.json           Omarchy plugin metadata
 config.example.toml     Configuration template
 nodoom.png              Bar icon (symbolic, tinted to the bar foreground)
-preview.png             Marketplace preview (bar + composer)
-screenshots/            Browser-free detailed UI captures
+preview.png             Marketplace preview (Omarchy bar + Nodoom composer)
 bin/npost               Optional CLI wrapper (resolves backend relative to itself)
 tests/test_backend.py   Isolated stdlib backend regression suite
 pyproject.toml          Poetry development metadata (runtime has no dependencies)
