@@ -33,15 +33,11 @@ Panel {
 
   readonly property color fg: bar ? bar.foreground : Color.foreground
   readonly property color dim: Qt.darker(fg, 1.4)
-  readonly property var serifFamilies: ["Noto Serif", "Liberation Serif", "DejaVu Serif", "FreeSerif", "serif"]
+  readonly property string family: bar ? bar.fontFamily : Style.font.family
+  readonly property string serifFamily: "serif"
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
-
-  readonly property var hostScreen: {
-    var win = button.QsWindow ? button.QsWindow.window : null
-    return win && win.screen ? win.screen : null
-  }
 
   onOpenedChanged: {
     if (opened && serviceReady) npost.refreshMode()
@@ -119,8 +115,11 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: composer
-    contentWidth: panel.fittedContentWidth(root.hostScreen ? root.hostScreen.width : Style.space(1600))
-    contentHeight: panel.fittedContentHeight(root.hostScreen ? root.hostScreen.height : Style.space(1000))
+    centerOnBar: true
+    padding: 0
+    borderSpec: Border.none()
+    contentWidth: panel.fittedContentWidth(Style.space(4000))
+    contentHeight: panel.fittedContentHeight(Style.space(4000), Style.space(4000))
 
     Item {
       id: panelBody
@@ -153,9 +152,8 @@ Panel {
             anchors.verticalCenter: parent.verticalCenter
             text: "New post"
             color: "#f4f1ea"
-            font.families: root.serifFamilies
+            font.family: root.serifFamily
             font.pixelSize: 28
-            font.weight: Font.Medium
           }
 
           Text {
@@ -167,7 +165,7 @@ Panel {
             elide: Text.ElideRight
             text: root.modeText
             color: root.serviceReady ? "#8a8580" : Color.urgent
-            font.families: root.serifFamilies
+            font.family: root.serifFamily
             font.pixelSize: 14
           }
         }
@@ -189,7 +187,7 @@ Panel {
           selectionColor: "#3a3530"
           selectedTextColor: "#f4f1ea"
           placeholderTextColor: "#6e6a64"
-          font.families: root.serifFamilies
+          font.family: root.serifFamily
           font.pixelSize: 24
           leftPadding: 0
           rightPadding: 0
@@ -197,7 +195,7 @@ Panel {
           bottomPadding: 0
           selectByMouse: true
           Accessible.name: "Post text"
-          background: null
+          background: Rectangle { color: "transparent" }
 
           onTextChanged: {
             if (text.length > root.charLimit) {
@@ -239,7 +237,7 @@ Panel {
             text: "Close"
             focusable: true
             foreground: "#f4f1ea"
-            fontFamily: "serif"
+            fontFamily: root.serifFamily
             fontSize: 14
             enabled: !root.posting
             onClicked: root.dismiss()
@@ -256,7 +254,7 @@ Panel {
               ? root.statusText
               : (root.charCount + " / " + root.charLimit)
             color: root.statusError ? Color.urgent : "#8a8580"
-            font.families: root.serifFamilies
+            font.family: root.serifFamily
             font.pixelSize: 13
           }
 
@@ -268,7 +266,7 @@ Panel {
             text: "Keep"
             focusable: true
             foreground: "#f4f1ea"
-            fontFamily: "serif"
+            fontFamily: root.serifFamily
             fontSize: 14
             enabled: root.serviceReady && !root.posting
             onClicked: root.npost.declinePrefill()
@@ -282,7 +280,7 @@ Panel {
             selected: true
             focusable: true
             foreground: "#f4f1ea"
-            fontFamily: "serif"
+            fontFamily: root.serifFamily
             fontSize: 14
             enabled: root.serviceReady && !root.posting
             onClicked: root.npost.acceptPrefill()
@@ -296,7 +294,7 @@ Panel {
             selected: true
             focusable: true
             foreground: "#f4f1ea"
-            fontFamily: "serif"
+            fontFamily: root.serifFamily
             fontSize: 14
             enabled: root.canSubmit
             onClicked: root.submit()
