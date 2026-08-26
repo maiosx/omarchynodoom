@@ -33,7 +33,7 @@ Panel {
 
   readonly property color fg: bar ? bar.foreground : Color.foreground
   readonly property color dim: Qt.darker(fg, 1.4)
-  readonly property string family: bar ? bar.fontFamily : Style.font.family
+  readonly property var serifFamilies: ["Noto Serif", "Liberation Serif", "DejaVu Serif", "FreeSerif", "serif"]
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -126,176 +126,181 @@ Panel {
       id: panelBody
       anchors.fill: parent
 
+      Rectangle {
+        anchors.fill: parent
+        color: "#000000"
+      }
+
       Item {
-        id: header
+        id: sheet
+        width: Math.min(parent.width - 80, 720)
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: headerLabel.implicitHeight
-
-        Text {
-          id: headerLabel
-          anchors.left: parent.left
-          anchors.verticalCenter: parent.verticalCenter
-          text: "New post"
-          color: root.fg
-          font.family: root.family
-          font.pixelSize: Style.font.subtitle
-          font.bold: true
-        }
-
-        Text {
-          anchors.left: headerLabel.right
-          anchors.leftMargin: Style.spacing.controlGap
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
-          horizontalAlignment: Text.AlignRight
-          elide: Text.ElideRight
-          text: root.modeText
-          color: root.serviceReady ? root.dim : Color.urgent
-          font.family: root.family
-          font.pixelSize: Style.font.caption
-        }
-      }
-
-      TextArea {
-        id: composer
-        anchors.top: header.bottom
-        anchors.topMargin: Style.spacing.controlGap
-        anchors.bottom: footer.top
-        anchors.bottomMargin: Style.spacing.controlGap
-        anchors.left: parent.left
-        anchors.right: parent.right
-        text: root.serviceReady ? root.npost.draft : ""
-        enabled: root.serviceReady
-        readOnly: !root.serviceReady || !root.npost.ready || root.posting
-        wrapMode: TextEdit.Wrap
-        placeholderText: "What's on your mind?"
-        color: root.fg
-        selectionColor: Style.selectionFillFor(root.fg, Color.accent)
-        selectedTextColor: root.fg
-        placeholderTextColor: root.dim
-        font.family: root.family
-        font.pixelSize: Style.font.body
-        leftPadding: Style.spacing.controlPaddingX + Border.left(composerBorder)
-        rightPadding: Style.spacing.controlPaddingX + Border.right(composerBorder)
-        topPadding: Style.spacing.inputPaddingY + Border.top(composerBorder)
-        bottomPadding: Style.spacing.inputPaddingY + Border.bottom(composerBorder)
-        selectByMouse: true
-        Accessible.name: "Post text"
-
-        readonly property var composerBorder: Border.controlSpec(
-          activeFocus ? "focus" : (hovered ? "hover-cursor" : "normal"),
-          root.fg, Color.accent)
-
-        background: BorderSurface {
-          color: Style.controlFill(composer.activeFocus, composer.hovered,
-            root.fg, Color.accent)
-          borderSpec: composer.composerBorder
-          radius: Style.cornerRadius
-        }
-
-        onTextChanged: {
-          if (text.length > root.charLimit) {
-            text = text.substring(0, root.charLimit)
-            return
-          }
-          if (root.serviceReady && text !== root.npost.draft) {
-            if (root.pendingReplace) root.npost.declinePrefill()
-            root.npost.setDraft(text)
-          }
-        }
-
-        Keys.onEscapePressed: function(event) {
-          event.accepted = true
-          root.dismiss()
-        }
-        Keys.onReturnPressed: function(event) {
-          if (event.modifiers & Qt.ShiftModifier) return
-          event.accepted = true
-          root.submit()
-        }
-        Keys.onEnterPressed: function(event) {
-          if (event.modifiers & Qt.ShiftModifier) return
-          event.accepted = true
-          root.submit()
-        }
-      }
-
-      Item {
-        id: footer
-        anchors.left: parent.left
-        anchors.right: parent.right
         anchors.bottom: parent.bottom
-        height: postButton.implicitHeight
+        anchors.topMargin: 56
+        anchors.bottomMargin: 40
 
-        Button {
-          id: closeButton
+        Item {
+          id: header
+          anchors.top: parent.top
           anchors.left: parent.left
-          text: "Close"
-          focusable: true
-          foreground: root.fg
-          fontFamily: root.family
-          fontSize: Style.font.body
-          enabled: !root.posting
-          onClicked: root.dismiss()
-        }
-
-        Text {
-          anchors.left: closeButton.right
-          anchors.leftMargin: Style.spacing.controlGap
-          anchors.right: root.pendingReplace ? keepButton.left : postButton.left
-          anchors.rightMargin: Style.spacing.controlGap
-          anchors.verticalCenter: parent.verticalCenter
-          elide: Text.ElideRight
-          text: root.statusText !== ""
-            ? root.statusText
-            : (root.charCount + " / " + root.charLimit)
-          color: root.statusError ? Color.urgent : root.dim
-          font.family: root.family
-          font.pixelSize: Style.font.caption
-        }
-
-        Button {
-          id: keepButton
-          anchors.right: replaceButton.left
-          anchors.rightMargin: Style.spacing.controlGap
-          visible: root.pendingReplace
-          text: "Keep"
-          focusable: true
-          foreground: root.fg
-          fontFamily: root.family
-          fontSize: Style.font.body
-          enabled: root.serviceReady && !root.posting
-          onClicked: root.npost.declinePrefill()
-        }
-
-        Button {
-          id: replaceButton
           anchors.right: parent.right
-          visible: root.pendingReplace
-          text: "Replace"
-          selected: true
-          focusable: true
-          foreground: root.fg
-          fontFamily: root.family
-          fontSize: Style.font.body
-          enabled: root.serviceReady && !root.posting
-          onClicked: root.npost.acceptPrefill()
+          height: headerLabel.implicitHeight
+
+          Text {
+            id: headerLabel
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "New post"
+            color: "#f4f1ea"
+            font.families: root.serifFamilies
+            font.pixelSize: 28
+            font.weight: Font.Medium
+          }
+
+          Text {
+            anchors.left: headerLabel.right
+            anchors.leftMargin: Style.spacing.controlGap
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignRight
+            elide: Text.ElideRight
+            text: root.modeText
+            color: root.serviceReady ? "#8a8580" : Color.urgent
+            font.families: root.serifFamilies
+            font.pixelSize: 14
+          }
         }
 
-        Button {
-          id: postButton
+        TextArea {
+          id: composer
+          anchors.top: header.bottom
+          anchors.topMargin: 28
+          anchors.bottom: footer.top
+          anchors.bottomMargin: 24
+          anchors.left: parent.left
           anchors.right: parent.right
-          visible: !root.pendingReplace
-          text: root.posting ? "Opening…" : root.actionLabel
-          selected: true
-          focusable: true
-          foreground: root.fg
-          fontFamily: root.family
-          fontSize: Style.font.body
-          enabled: root.canSubmit
-          onClicked: root.submit()
+          text: root.serviceReady ? root.npost.draft : ""
+          enabled: root.serviceReady
+          readOnly: !root.serviceReady || !root.npost.ready || root.posting
+          wrapMode: TextEdit.Wrap
+          placeholderText: "What's on your mind?"
+          color: "#f4f1ea"
+          selectionColor: "#3a3530"
+          selectedTextColor: "#f4f1ea"
+          placeholderTextColor: "#6e6a64"
+          font.families: root.serifFamilies
+          font.pixelSize: 24
+          leftPadding: 0
+          rightPadding: 0
+          topPadding: 0
+          bottomPadding: 0
+          selectByMouse: true
+          Accessible.name: "Post text"
+          background: null
+
+          onTextChanged: {
+            if (text.length > root.charLimit) {
+              text = text.substring(0, root.charLimit)
+              return
+            }
+            if (root.serviceReady && text !== root.npost.draft) {
+              if (root.pendingReplace) root.npost.declinePrefill()
+              root.npost.setDraft(text)
+            }
+          }
+
+          Keys.onEscapePressed: function(event) {
+            event.accepted = true
+            root.dismiss()
+          }
+          Keys.onReturnPressed: function(event) {
+            if (event.modifiers & Qt.ShiftModifier) return
+            event.accepted = true
+            root.submit()
+          }
+          Keys.onEnterPressed: function(event) {
+            if (event.modifiers & Qt.ShiftModifier) return
+            event.accepted = true
+            root.submit()
+          }
+        }
+
+        Item {
+          id: footer
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.bottom: parent.bottom
+          height: postButton.implicitHeight
+
+          Button {
+            id: closeButton
+            anchors.left: parent.left
+            text: "Close"
+            focusable: true
+            foreground: "#f4f1ea"
+            fontFamily: "serif"
+            fontSize: 14
+            enabled: !root.posting
+            onClicked: root.dismiss()
+          }
+
+          Text {
+            anchors.left: closeButton.right
+            anchors.leftMargin: Style.spacing.controlGap
+            anchors.right: root.pendingReplace ? keepButton.left : postButton.left
+            anchors.rightMargin: Style.spacing.controlGap
+            anchors.verticalCenter: parent.verticalCenter
+            elide: Text.ElideRight
+            text: root.statusText !== ""
+              ? root.statusText
+              : (root.charCount + " / " + root.charLimit)
+            color: root.statusError ? Color.urgent : "#8a8580"
+            font.families: root.serifFamilies
+            font.pixelSize: 13
+          }
+
+          Button {
+            id: keepButton
+            anchors.right: replaceButton.left
+            anchors.rightMargin: Style.spacing.controlGap
+            visible: root.pendingReplace
+            text: "Keep"
+            focusable: true
+            foreground: "#f4f1ea"
+            fontFamily: "serif"
+            fontSize: 14
+            enabled: root.serviceReady && !root.posting
+            onClicked: root.npost.declinePrefill()
+          }
+
+          Button {
+            id: replaceButton
+            anchors.right: parent.right
+            visible: root.pendingReplace
+            text: "Replace"
+            selected: true
+            focusable: true
+            foreground: "#f4f1ea"
+            fontFamily: "serif"
+            fontSize: 14
+            enabled: root.serviceReady && !root.posting
+            onClicked: root.npost.acceptPrefill()
+          }
+
+          Button {
+            id: postButton
+            anchors.right: parent.right
+            visible: !root.pendingReplace
+            text: root.posting ? "Opening…" : root.actionLabel
+            selected: true
+            focusable: true
+            foreground: "#f4f1ea"
+            fontFamily: "serif"
+            fontSize: 14
+            enabled: root.canSubmit
+            onClicked: root.submit()
+          }
         }
       }
     }
