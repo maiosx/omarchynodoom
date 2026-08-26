@@ -46,6 +46,7 @@ Panel {
 
   function submit() {
     if (serviceReady) npost.submit()
+    root.close()
   }
 
   function dismiss() {
