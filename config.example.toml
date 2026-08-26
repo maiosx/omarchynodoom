@@ -9,14 +9,14 @@
 #
 # ------------------------------------------------------------- mode ------
 # Browser composer (the only mode)
-#    Posts are handed off to Nodoom in your browser (https://nodoom.app).
+#    Posts are handed off to Nodoom at https://nodoom.app/composer.
 #    Nothing is published until you press Post there. No API keys needed.
 #
 # copy_draft = true  ->  the draft is copied to the clipboard with
 #    wl-copy (Wayland / Omarchy), xclip, or xsel before the browser opens.
 #
-# auto_paste = true  ->  after Nodoom opens, the plugin focuses the window,
-#    clicks "What's on your mind?", and pastes with Ctrl+V (hyprctl on
+# auto_paste = true  ->  after /composer loads, the plugin focuses the
+#    window, clicks the textarea, and pastes with Ctrl+V (hyprctl on
 #    Omarchy, or wtype / ydotool / xdotool). You still press Post.
 #
 # paste_delay = 2.2  ->  seconds to wait for Nodoom to render before pasting.

@@ -22,10 +22,10 @@ files, so jobs survive shell reloads and re-attach on the next poll.
 
 Mode
     intent (only): hands the draft to Nodoom in the browser
-        (https://nodoom.app) via xdg-open. Copies the draft to the
-        clipboard, then auto-pastes it into Nodoom's composer (Ctrl+V
-        after opening "What's on your mind?"). The user presses Post
-        there. There is no API posting path — Nodoom has no public write API.
+        (https://nodoom.app/composer) via xdg-open. Copies the draft to
+        the clipboard, then auto-pastes it into the composer textarea
+        (Ctrl+V). The user presses Post there. There is no API posting
+        path — Nodoom has no public write API.
 
 Security posture
     * ~/.config/npost is kept 0700 and config.toml 0600; symlinks, foreign
@@ -55,7 +55,7 @@ import urllib.parse
 import uuid
 from pathlib import Path
 
-INTENT_URL = "https://nodoom.app/"
+INTENT_URL = "https://nodoom.app/composer"
 USER_AGENT = "nodoom.composer-omarchy/1.0"
 XDG_OPEN_TIMEOUT = 20  # seconds
 WORKER_NEVER_STARTED_GRACE = 60  # seconds
@@ -80,14 +80,15 @@ CONFIG_TEMPLATE = """\
 # Generated on first run; edit freely, it is never overwritten.
 #
 # Browser composer (the only mode)
-#    Posts are handed off to Nodoom in your browser (https://nodoom.app).
-#    Nothing is published until you press Post there.
+#    Posts are handed off to Nodoom in your browser
+#    (https://nodoom.app/composer). Nothing is published until you press
+#    Post there.
 #
 # copy_draft = true  ->  the draft is copied to the clipboard with
 #    wl-copy (Wayland), xclip, or xsel before the browser opens.
-# auto_paste = true  ->  after Nodoom opens, the plugin focuses the
-#    window, opens "What's on your mind?", and pastes with Ctrl+V
-#    (hyprctl / wtype / ydotool). You still press Post in the browser.
+# auto_paste = true  ->  after /composer loads, the plugin focuses the
+#    window, clicks the textarea, and pastes with Ctrl+V (hyprctl /
+#    wtype / ydotool). You still press Post in the browser.
 # paste_delay = 2.2  ->  seconds to wait for Nodoom to render first.
 
 copy_draft = true
@@ -466,11 +467,15 @@ def _find_nodoom_window() -> dict | None:
             continue
         title = str(c.get("title") or "")
         klass = str(c.get("class") or "").lower()
-        if "nodoom" in title.lower():
+        low = title.lower()
+        if "composer" in low and "nodoom" in low:
             ranked.append((0, c))
             continue
-        if any(b in klass for b in browsers) and c.get("focusHistoryID") == 0:
+        if "nodoom" in low:
             ranked.append((1, c))
+            continue
+        if any(b in klass for b in browsers) and c.get("focusHistoryID") == 0:
+            ranked.append((2, c))
     ranked.sort(key=lambda pair: pair[0])
     return ranked[0][1] if ranked else None
 
@@ -572,13 +577,12 @@ def _paste_tools_available() -> bool:
 
 
 def _auto_paste_into_composer(*, delay: float) -> bool:
-    """Open Nodoom's composer and Ctrl+V the clipboard into the textarea.
+    """Focus Nodoom's /composer page and Ctrl+V the clipboard into the textarea.
 
-    Nodoom has no compose URL. The timeline button "What's on your mind?"
-    sits under the sticky header; the New Post dialog is centered, and its
-    body is the content textarea. Clicks use window fractions so they track
-    the window instead of a hardcoded resolution. Ctrl+V uses the clipboard
-    so the draft never appears in process argv.
+    https://nodoom.app/composer renders the form immediately (no timeline
+    click). The content textarea sits under the page header, toolbar, and
+    optional title — roughly the upper-middle of the window. Ctrl+V uses
+    the clipboard so the draft never appears in process argv.
     """
     if not _paste_tools_available():
         return False
@@ -588,14 +592,9 @@ def _auto_paste_into_composer(*, delay: float) -> bool:
     if client:
         _focus_window(client)
         time.sleep(0.12)
-        p1 = _window_point(client, 0.50, 0.26)
-        if p1:
-            _click_at(*p1, client)
-        time.sleep(0.55)
-        client = _find_nodoom_window() or client
-        p2 = _window_point(client, 0.50, 0.50)
-        if p2:
-            _click_at(*p2, client)
+        point = _window_point(client, 0.50, 0.42)
+        if point:
+            _click_at(*point, client)
         time.sleep(0.12)
         return _send_ctrl_v(client)
     return _send_ctrl_v(None)

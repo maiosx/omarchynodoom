@@ -16,9 +16,9 @@ Adapted from [bitr0t.omarchytweet](https://github.com/rmacy/omarchytweet) — sa
 
 ## Posting mode
 
-**Browser composer (the only mode, free)** — opens [nodoom.app](https://nodoom.app) via `xdg-open`, copies the draft to the clipboard, then pastes it into *What's on your mind?* (Ctrl+V via hyprctl / wtype / ydotool). You press the final **Post** button in your browser. No API keys needed.
+**Browser composer (the only mode, free)** — opens [nodoom.app/composer](https://nodoom.app/composer) via `xdg-open`, copies the draft to the clipboard, then pastes it into the composer textarea (Ctrl+V via hyprctl / wtype / ydotool). You press the final **Post** button in your browser. No API keys needed.
 
-Nodoom has no compose URL, so the paste is input-automation against the live page. Stay logged in; if the box is empty, press Ctrl+V.
+Stay logged in; if the box is empty, press Ctrl+V.
 
 24-hour vs permanent expiry is chosen in Nodoom's own composer after the handoff.
 
@@ -93,7 +93,7 @@ Runtime state (job files, locks) lives under `$XDG_RUNTIME_DIR/nodoom.composer`.
 
 ## How the handoff stays off `/proc`
 
-`xdg-open` exposes its argument through process metadata. The worker writes an owner-only local HTML redirect (`intent.html` inside the job directory) and passes **only that file URI** to `xdg-open`. The Nodoom URL — which may embed draft text as `?text=` if clipboard copy failed — never appears in argv.
+`xdg-open` exposes its argument through process metadata. The worker writes an owner-only local HTML redirect (`intent.html` inside the job directory) and passes **only that file URI** to `xdg-open`. The Nodoom composer URL — which may embed draft text as `?text=` if clipboard copy failed — never appears in argv.
 
 Clipboard copy itself is stdin to `wl-copy` / `xclip` / `xsel`, never argv. Auto-paste sends Ctrl+V (clipboard), never types the draft as keystrokes.
 

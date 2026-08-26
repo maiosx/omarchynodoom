@@ -6,7 +6,7 @@
 [project]
 name = "nodoom-composer"
 version = "1.0.0"
-description = "Nodoom composer Omarchy plugin: browser-intent handoff to nodoom.app."
+description = "Nodoom composer Omarchy plugin: browser-intent handoff to nodoom.app/composer."
 requires-python = ">=3.11,<4"
 dependencies = []
 

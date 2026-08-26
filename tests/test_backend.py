@@ -110,7 +110,7 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
 
     # Detached worker: exactly one claim, replay is refused as busy, clipboard
     # receives the draft on stdin, and xdg-open's argv is a private file URI
-    # that does not contain the draft (copy succeeded → clean nodoom.app URL).
+    # that does not contain the draft (copy succeeded → clean /composer URL).
     _, q = run(env, "enqueue", payload={"text": "one worker only"}, ok=True)
     jid = q["jobId"]
     worker_claim = runtime / "nodoom.composer" / "jobs" / jid / "worker.json"
@@ -138,7 +138,7 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
     assert opened_arg.startswith("file://") and "one%20worker%20only" not in opened_arg, opened_arg
     redirect = Path(urllib.parse.unquote(urllib.parse.urlparse(opened_arg).path))
     redirect_html = redirect.read_text()
-    assert "https://nodoom.app/" in redirect_html
+    assert "https://nodoom.app/composer" in redirect_html
     assert "one%20worker%20only" not in redirect_html
     run(env, "ack", jid, ok=True)
     assert not redirect.exists(), "ack retained draft-bearing redirect"
@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
     opened_arg = arg.read_text()
     redirect = Path(urllib.parse.unquote(urllib.parse.urlparse(opened_arg).path))
     redirect_html = redirect.read_text()
-    assert "https://nodoom.app/?" in redirect_html and "no%20clip" in redirect_html
+    assert "https://nodoom.app/composer?" in redirect_html and "no%20clip" in redirect_html
     assert "no clip" not in opened_arg
     assert clip.read_text() == ""
     run(env, "ack", jid, ok=True)
@@ -174,7 +174,7 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
                 f"printf '%s\\n' \"$*\" >> {hypr_log}",
                 'if [ "$1" = "-j" ] && [ "$2" = "clients" ]; then',
                 """cat <<'EOF'
-[{"address":"0x1","mapped":true,"hidden":false,"at":[0,0],"size":[1200,900],"class":"firefox","title":"Nodoom — Mozilla Firefox","focusHistoryID":0}]
+[{"address":"0x1","mapped":true,"hidden":false,"at":[0,0],"size":[1200,900],"class":"firefox","title":"Composer | Nodoom — Mozilla Firefox","focusHistoryID":0}]
 EOF""",
                 "fi",
                 "exit 0",
