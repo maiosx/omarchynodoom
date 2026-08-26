@@ -22,10 +22,10 @@ files, so jobs survive shell reloads and re-attach on the next poll.
 
 Mode
     intent (only): hands the draft to Nodoom in the browser
-        (https://nodoom.app) via xdg-open. Optionally copies the draft to
-        the clipboard (wl-copy / xclip / xsel) so it can be pasted into
-        Nodoom's composer. The user presses the final Post button there.
-        There is no API posting path — Nodoom has no public write API.
+        (https://nodoom.app) via xdg-open. Copies the draft to the
+        clipboard, then auto-pastes it into Nodoom's composer (Ctrl+V
+        after opening "What's on your mind?"). The user presses Post
+        there. There is no API posting path — Nodoom has no public write API.
 
 Security posture
     * ~/.config/npost is kept 0700 and config.toml 0600; symlinks, foreign
@@ -84,12 +84,15 @@ CONFIG_TEMPLATE = """\
 #    Nothing is published until you press Post there.
 #
 # copy_draft = true  ->  the draft is copied to the clipboard with
-#    wl-copy (Wayland), xclip, or xsel before the browser opens, so you
-#    can paste into Nodoom's "What's on your mind?" field.
-#    If clipboard copy fails, the private redirect still carries the
-#    text as ?text= — it is never placed in xdg-open's argv.
+#    wl-copy (Wayland), xclip, or xsel before the browser opens.
+# auto_paste = true  ->  after Nodoom opens, the plugin focuses the
+#    window, opens "What's on your mind?", and pastes with Ctrl+V
+#    (hyprctl / wtype / ydotool). You still press Post in the browser.
+# paste_delay = 2.2  ->  seconds to wait for Nodoom to render first.
 
 copy_draft = true
+auto_paste = true
+paste_delay = 2.2
 """
 
 
@@ -216,11 +219,21 @@ def compute_mode(cfg: dict) -> dict:
     copy_draft = cfg.get("copy_draft", True)
     if not isinstance(copy_draft, bool):
         raise BackendError("config", "copy_draft must be true or false")
+    auto_paste = cfg.get("auto_paste", True)
+    if not isinstance(auto_paste, bool):
+        raise BackendError("config", "auto_paste must be true or false")
+    paste_delay = cfg.get("paste_delay", 2.2)
+    if isinstance(paste_delay, int) and not isinstance(paste_delay, bool):
+        paste_delay = float(paste_delay)
+    if not isinstance(paste_delay, float) or not 0 <= paste_delay <= 15:
+        raise BackendError("config", "paste_delay must be a number of seconds between 0 and 15")
     return {
         "mode": "intent",
         "paid": False,
         "label": "Browser composer",
         "copyDraft": copy_draft,
+        "autoPaste": auto_paste,
+        "pasteDelay": paste_delay,
     }
 
 
@@ -405,12 +418,202 @@ def _copy_to_clipboard(text: str) -> bool:
     return False
 
 
-def intent_handoff(text: str, redirect_path: Path, *, copy_draft: bool) -> dict:
+def _run_quiet(argv: list[str], *, timeout: float = 2, stdin: bytes | None = None) -> bool:
+    try:
+        p = subprocess.run(
+            argv,
+            input=stdin,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return p.returncode == 0
+
+
+def _hyprctl(*args: str, timeout: float = 2) -> subprocess.CompletedProcess | None:
+    exe = shutil.which("hyprctl")
+    if exe is None:
+        return None
+    try:
+        return subprocess.run(
+            [exe, *args],
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def _find_nodoom_window() -> dict | None:
+    """Return a hyprland client dict for the Nodoom browser tab, if any."""
+    proc = _hyprctl("-j", "clients")
+    if proc is None or proc.returncode != 0 or not proc.stdout:
+        return None
+    try:
+        clients = json.loads(proc.stdout.decode("utf-8"))
+    except ValueError:
+        return None
+    if not isinstance(clients, list):
+        return None
+    browsers = ("firefox", "chrom", "brave", "vivaldi", "librewolf", "zen", "edge", "qutebrowser", "iso.web")
+    ranked: list[tuple[int, dict]] = []
+    for c in clients:
+        if not isinstance(c, dict) or not c.get("mapped") or c.get("hidden"):
+            continue
+        title = str(c.get("title") or "")
+        klass = str(c.get("class") or "").lower()
+        if "nodoom" in title.lower():
+            ranked.append((0, c))
+            continue
+        if any(b in klass for b in browsers) and c.get("focusHistoryID") == 0:
+            ranked.append((1, c))
+    ranked.sort(key=lambda pair: pair[0])
+    return ranked[0][1] if ranked else None
+
+
+def _focus_window(client: dict) -> None:
+    addr = client.get("address")
+    if isinstance(addr, str) and addr:
+        _hyprctl("dispatch", "focuswindow", f"address:{addr}")
+        _hyprctl("dispatch", "bringactivetotop")
+
+
+def _window_point(client: dict, fx: float, fy: float) -> tuple[int, int] | None:
+    at, size = client.get("at"), client.get("size")
+    if not (isinstance(at, list) and isinstance(size, list) and len(at) >= 2 and len(size) >= 2):
+        return None
+    try:
+        x, y = int(at[0]), int(at[1])
+        w, h = int(size[0]), int(size[1])
+    except (TypeError, ValueError):
+        return None
+    if w <= 1 or h <= 1:
+        return None
+    return x + max(0, min(w - 1, int(w * fx))), y + max(0, min(h - 1, int(h * fy)))
+
+
+def _click_at(x: int, y: int, client: dict | None = None) -> bool:
+    """Left-click (x, y) in global compositor coordinates. Draft is not used."""
+    addr = ""
+    if client and isinstance(client.get("address"), str):
+        addr = client["address"]
+    if shutil.which("hyprctl"):
+        _hyprctl("dispatch", "movecursor", str(x), str(y))
+        # Empty mods + mouse:272 = left click. Trailing comma is required.
+        if addr:
+            _hyprctl("dispatch", "sendshortcut", f",mouse:272,address:{addr}")
+        _hyprctl("dispatch", "sendshortcut", ",mouse:272,")
+    if shutil.which("ydotool"):
+        if _run_quiet(["ydotool", "mousemove", "--absolute", str(x), str(y)]) and _run_quiet(
+            ["ydotool", "click", "0xC0"]
+        ):
+            return True
+    if shutil.which("wlrctl"):
+        if _run_quiet(["wlrctl", "pointer", "move", str(x), str(y)]) and _run_quiet(
+            ["wlrctl", "pointer", "click", "left"]
+        ):
+            return True
+    exe = shutil.which("dotool")
+    if exe and _run_quiet([exe], stdin=f"mousemove {x} {y}\nclick left\n".encode("ascii")):
+        return True
+    if shutil.which("xdotool") and _run_quiet(
+        ["xdotool", "mousemove", "--sync", str(x), str(y), "click", "1"]
+    ):
+        return True
+    return shutil.which("hyprctl") is not None
+
+
+def _send_ctrl_v(client: dict | None = None) -> bool:
+    """Paste from the clipboard. The draft never appears in argv."""
+    addr = ""
+    if client and isinstance(client.get("address"), str):
+        addr = f"address:{client['address']}"
+    variants = []
+    if addr:
+        variants.append(["dispatch", "sendshortcut", f"CONTROL,V,{addr}"])
+        variants.append(["dispatch", "sendshortcut", f"Control_L,V,{addr}"])
+    variants.extend(
+        [
+            ["dispatch", "sendshortcut", "CONTROL,V,"],
+            ["dispatch", "sendshortcut", "Control_L,V,"],
+            ["dispatch", "sendshortcut", "Control,V,"],
+        ]
+    )
+    if shutil.which("hyprctl"):
+        for args in variants:
+            proc = _hyprctl(*args)
+            if proc is not None and proc.returncode == 0:
+                return True
+    if shutil.which("wtype") and _run_quiet(["wtype", "-M", "ctrl", "v", "-m", "ctrl"]):
+        return True
+    if shutil.which("ydotool") and _run_quiet(["ydotool", "key", "29:1", "47:1", "47:0", "29:0"]):
+        return True
+    exe = shutil.which("dotool")
+    if exe and _run_quiet([exe], stdin=b"key ctrl+v\n"):
+        return True
+    if shutil.which("xdotool") and _run_quiet(["xdotool", "key", "ctrl+v"]):
+        return True
+    return False
+
+
+def _paste_tools_available() -> bool:
+    if os.environ.get("NPOST_NO_AUTOPASTE") == "1":
+        return False
+    if not (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")):
+        return False
+    return any(
+        shutil.which(name)
+        for name in ("hyprctl", "wtype", "ydotool", "dotool", "xdotool", "wlrctl")
+    )
+
+
+def _auto_paste_into_composer(*, delay: float) -> bool:
+    """Open Nodoom's composer and Ctrl+V the clipboard into the textarea.
+
+    Nodoom has no compose URL. The timeline button "What's on your mind?"
+    sits under the sticky header; the New Post dialog is centered, and its
+    body is the content textarea. Clicks use window fractions so they track
+    the window instead of a hardcoded resolution. Ctrl+V uses the clipboard
+    so the draft never appears in process argv.
+    """
+    if not _paste_tools_available():
+        return False
+    if delay > 0:
+        time.sleep(delay)
+    client = _find_nodoom_window()
+    if client:
+        _focus_window(client)
+        time.sleep(0.12)
+        p1 = _window_point(client, 0.50, 0.26)
+        if p1:
+            _click_at(*p1, client)
+        time.sleep(0.55)
+        client = _find_nodoom_window() or client
+        p2 = _window_point(client, 0.50, 0.50)
+        if p2:
+            _click_at(*p2, client)
+        time.sleep(0.12)
+        return _send_ctrl_v(client)
+    return _send_ctrl_v(None)
+
+
+def intent_handoff(
+    text: str,
+    redirect_path: Path,
+    *,
+    copy_draft: bool,
+    auto_paste: bool,
+    paste_delay: float,
+) -> dict:
     """Open Nodoom without placing draft text in process argv."""
-    copied = bool(copy_draft) and _copy_to_clipboard(text)
+    copied = bool(copy_draft or auto_paste) and _copy_to_clipboard(text)
     if copied:
         url = INTENT_URL
-        message = "Composer opened in Nodoom — paste your draft and press Post"
+        message = "Composer opened in Nodoom — press Post when you're ready"
     else:
         url = INTENT_URL + "?" + urllib.parse.urlencode({"text": text}, quote_via=urllib.parse.quote)
         message = "Composer opened in Nodoom — review and press Post there"
@@ -445,10 +648,16 @@ def intent_handoff(text: str, redirect_path: Path, *, copy_draft: bool) -> dict:
         with contextlib.suppress(subprocess.TimeoutExpired, OSError):
             p.wait(timeout=5)
         return {"state": "unknown", "message": "could not confirm the Nodoom composer opened — check your browser"}
-    if rc == 0:
-        return {"state": "handoff", "message": message, "copied": copied}
-    return {"state": "rejected", "message": f"xdg-open failed with exit code {rc}"}
-
+    if rc != 0:
+        return {"state": "rejected", "message": f"xdg-open failed with exit code {rc}"}
+    pasted = False
+    if auto_paste and copied:
+        pasted = _auto_paste_into_composer(delay=paste_delay)
+        if pasted:
+            message = "Draft filled in Nodoom — review and press Post"
+        elif copied:
+            message = "Composer opened — if the draft is empty, press Ctrl+V"
+    return {"state": "handoff", "message": message, "copied": copied, "pasted": pasted}
 
 # ----------------------------------------------------------------- commands
 
@@ -469,6 +678,8 @@ def _status_payload(st: dict) -> dict:
         out["draftRevision"] = st["draftRevision"]
     if st.get("copied") is True:
         out["copied"] = True
+    if st.get("pasted") is True:
+        out["pasted"] = True
     return out
 
 
@@ -480,6 +691,7 @@ def cmd_mode() -> int:
         "label": m["label"],
         "paid": m["paid"],
         "copyDraft": m["copyDraft"],
+        "autoPaste": m["autoPaste"],
     }
     return emit(out)
 
@@ -556,6 +768,8 @@ def cmd_enqueue() -> int:
             "text": text,
             "mode": m["mode"],
             "copyDraft": m["copyDraft"],
+            "autoPaste": m["autoPaste"],
+            "pasteDelay": m["pasteDelay"],
             "created": now,
         }
         if job_draft_revision is not None:
@@ -754,10 +968,24 @@ def _run_worker(jid: str) -> int:
     copy_draft = inp.get("copyDraft", True)
     if not isinstance(copy_draft, bool):
         copy_draft = True
+    auto_paste = inp.get("autoPaste", True)
+    if not isinstance(auto_paste, bool):
+        auto_paste = True
+    paste_delay = inp.get("pasteDelay", 2.2)
+    if isinstance(paste_delay, int) and not isinstance(paste_delay, bool):
+        paste_delay = float(paste_delay)
+    if not isinstance(paste_delay, float):
+        paste_delay = 2.2
     draft_revision = inp.get("draftRevision")
     _log(f"worker start job={jid} mode={mode} len={len(text)}")
     _write_state(rt, jid, state="running", message="opening the Nodoom composer")
-    result = intent_handoff(text, jd / "intent.html", copy_draft=copy_draft)
+    result = intent_handoff(
+        text,
+        jd / "intent.html",
+        copy_draft=copy_draft,
+        auto_paste=auto_paste,
+        paste_delay=paste_delay,
+    )
     _log(f"worker done job={jid} state={result['state']}")
     fields = {
         "state": result["state"],
@@ -770,6 +998,8 @@ def _run_worker(jid: str) -> int:
         fields["url"] = result["url"]
     if result.get("copied") is True:
         fields["copied"] = True
+    if result.get("pasted") is True:
+        fields["pasted"] = True
     st = _write_state(rt, jid, **fields)
     return emit(_status_payload(st))
 

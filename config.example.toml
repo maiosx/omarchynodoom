@@ -13,9 +13,15 @@
 #    Nothing is published until you press Post there. No API keys needed.
 #
 # copy_draft = true  ->  the draft is copied to the clipboard with
-#    wl-copy (Wayland / Omarchy), xclip, or xsel before the browser opens,
-#    so you can paste into Nodoom's "What's on your mind?" field.
-#    If clipboard copy fails, the private redirect still carries the text
-#    as ?text= — it is never placed in xdg-open's argv.
+#    wl-copy (Wayland / Omarchy), xclip, or xsel before the browser opens.
+#
+# auto_paste = true  ->  after Nodoom opens, the plugin focuses the window,
+#    clicks "What's on your mind?", and pastes with Ctrl+V (hyprctl on
+#    Omarchy, or wtype / ydotool / xdotool). You still press Post.
+#
+# paste_delay = 2.2  ->  seconds to wait for Nodoom to render before pasting.
+#    Raise this if the composer opens empty on a slow connection.
 
 copy_draft = true
+auto_paste = true
+paste_delay = 2.2

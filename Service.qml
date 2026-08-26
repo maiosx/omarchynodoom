@@ -401,9 +401,11 @@ QtObject {
     if (state === "posted" || state === "handoff") {
       statusText = state === "posted"
         ? "Posted"
-        : (response.copied === true
-            ? "Composer opened — paste in Nodoom"
-            : "Composer opened")
+        : (response.pasted === true
+            ? "Draft filled — press Post in Nodoom"
+            : (response.copied === true
+                ? "Composer opened — press Ctrl+V if empty"
+                : "Composer opened"))
       statusError = false
       var sameLocalDraft = submittedRevision >= 0
         && draftRevision === submittedRevision

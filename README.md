@@ -16,7 +16,9 @@ Adapted from [bitr0t.omarchytweet](https://github.com/rmacy/omarchytweet) — sa
 
 ## Posting mode
 
-**Browser composer (the only mode, free)** — opens [nodoom.app](https://nodoom.app) via `xdg-open`. By default the draft is also copied to the clipboard (`wl-copy` on Omarchy, or `xclip` / `xsel`) so you can paste into *What's on your mind?*. You press the final **Post** button in your browser. No API keys needed.
+**Browser composer (the only mode, free)** — opens [nodoom.app](https://nodoom.app) via `xdg-open`, copies the draft to the clipboard, then pastes it into *What's on your mind?* (Ctrl+V via hyprctl / wtype / ydotool). You press the final **Post** button in your browser. No API keys needed.
+
+Nodoom has no compose URL, so the paste is input-automation against the live page. Stay logged in; if the box is empty, press Ctrl+V.
 
 24-hour vs permanent expiry is chosen in Nodoom's own composer after the handoff.
 
@@ -42,7 +44,7 @@ cp ~/.config/omarchy/plugins/nodoom.composer/config.example.toml ~/.config/npost
 chmod 600 ~/.config/npost/config.toml
 ```
 
-Edit `~/.config/npost/config.toml` to set `copy_draft`. The backend also generates this template with correct permissions on first run.
+Edit `~/.config/npost/config.toml` to set `copy_draft`, `auto_paste`, and `paste_delay`. The backend also generates this template with correct permissions on first run.
 
 ## Controls
 
@@ -93,7 +95,7 @@ Runtime state (job files, locks) lives under `$XDG_RUNTIME_DIR/nodoom.composer`.
 
 `xdg-open` exposes its argument through process metadata. The worker writes an owner-only local HTML redirect (`intent.html` inside the job directory) and passes **only that file URI** to `xdg-open`. The Nodoom URL — which may embed draft text as `?text=` if clipboard copy failed — never appears in argv.
 
-Clipboard copy itself is stdin to `wl-copy` / `xclip` / `xsel`, never argv.
+Clipboard copy itself is stdin to `wl-copy` / `xclip` / `xsel`, never argv. Auto-paste sends Ctrl+V (clipboard), never types the draft as keystrokes.
 
 ## Development
 
