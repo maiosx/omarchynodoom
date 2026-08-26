@@ -506,8 +506,12 @@ def _draft_record() -> tuple[str, int]:
         return "", 0
     text = data.get("text")
     revision = data.get("revision")
+    if not isinstance(text, str):
+        text = ""
+    elif len(text) > MAX_TEXT:
+        text = text[:MAX_TEXT]
     return (
-        text if isinstance(text, str) else "",
+        text,
         revision if isinstance(revision, int) and revision >= 0 else 0,
     )
 

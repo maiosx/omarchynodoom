@@ -27,7 +27,8 @@ Panel {
   readonly property bool canSubmit: serviceReady && npost.ready
     && !npost.posting && composer.text.trim().length > 0
   readonly property int charCount: composer.text.length
-  readonly property int charLimit: 5000
+  readonly property int charLimit: serviceReady ? npost.maxText : 5000
+  readonly property bool pendingReplace: serviceReady && npost.pendingPrefill.length > 0
 
   readonly property color fg: bar ? bar.foreground : Color.foreground
   readonly property color dim: Qt.darker(fg, 1.4)
@@ -45,7 +46,9 @@ Panel {
   }
 
   // Prefill the shared draft and open this monitor's presentation. The
-  // service rejects mutation while starting or while a post is active.
+  // service rejects mutation while starting or while a post is active,
+  // rejects text over 5,000 characters, and will not overwrite an
+  // existing draft until the user confirms.
   function compose(text) {
     var result = serviceReady ? npost.compose(text) : "service-unavailable"
     root.open()
@@ -181,6 +184,7 @@ Panel {
             return
           }
           if (root.serviceReady && text !== root.npost.draft) {
+            if (root.pendingReplace) root.npost.declinePrefill()
             root.npost.setDraft(text)
           }
         }
@@ -207,7 +211,7 @@ Panel {
 
         Text {
           anchors.left: parent.left
-          anchors.right: postButton.left
+          anchors.right: root.pendingReplace ? keepButton.left : postButton.left
           anchors.rightMargin: Style.spacing.controlGap
           anchors.verticalCenter: parent.verticalCenter
           elide: Text.ElideRight
@@ -220,8 +224,37 @@ Panel {
         }
 
         Button {
+          id: keepButton
+          anchors.right: replaceButton.left
+          anchors.rightMargin: Style.spacing.controlGap
+          visible: root.pendingReplace
+          text: "Keep"
+          focusable: true
+          foreground: root.fg
+          fontFamily: root.family
+          fontSize: Style.font.body
+          enabled: root.serviceReady && !root.posting
+          onClicked: root.npost.declinePrefill()
+        }
+
+        Button {
+          id: replaceButton
+          anchors.right: parent.right
+          visible: root.pendingReplace
+          text: "Replace"
+          selected: true
+          focusable: true
+          foreground: root.fg
+          fontFamily: root.family
+          fontSize: Style.font.body
+          enabled: root.serviceReady && !root.posting
+          onClicked: root.npost.acceptPrefill()
+        }
+
+        Button {
           id: postButton
           anchors.right: parent.right
+          visible: !root.pendingReplace
           text: root.posting ? "Opening…" : root.actionLabel
           selected: true
           focusable: true

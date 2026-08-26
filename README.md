@@ -42,7 +42,12 @@ Edit `~/.config/npost/config.toml` to set `copy_draft`. The backend also generat
 - **Enter** submits; **Shift+Enter** inserts a newline; **Escape** dismisses.
 - The action button is always *Continue in Nodoom*.
 - Drafts persist across panel open/close cycles and are shared across monitors.
-- Posts are capped at 5,000 characters (Nodoom's composer limit).
+- Posts are capped at 5,000 characters (Nodoom's composer limit). The cap is
+  enforced in the panel, at the QML IPC boundary, and again in the backend.
+- External prefill (`omarchy-shell nodoom.composer.compose compose "hello"`)
+  is rejected if over 5,000 characters. If a draft already exists, the panel
+  asks **Replace** / **Keep** before overwriting it; the incoming text is not
+  persisted until you confirm.
 
 ## Optional CLI
 
@@ -101,6 +106,7 @@ Runtime never depends on Poetry.
 - Secrets are never logged, echoed, or included in JSON output (this plugin has none).
 - The handoff URL embeds draft text as `?text=` so Nodoom can prefill the composer, and is never returned in JSON or logs.
 - Post text arrives via stdin or job files — never via shell interpolation or command-line arguments.
+- The public `nodoom.composer.compose` IPC handler rejects text over 5,000 characters before the shared service stores or persists it. An IPC prefill never overwrites an existing draft until the user confirms in the panel.
 
 ## Uninstall
 

@@ -21,6 +21,8 @@ QtObject {
   property int draftRevision: 0
   property string lastPersistedDraft: ""
   property int draftStorageRevision: 0
+  property string pendingPrefill: ""
+  readonly property int maxText: 5000
 
   property bool posting: false
   property bool finalizingDraft: false
@@ -325,7 +327,7 @@ QtObject {
   }
 
   function applyLoadedDraft(operation, response) {
-    var loaded = String(response.text || "")
+    var loaded = clampText(String(response.text || ""))
     lastPersistedDraft = loaded
     if (typeof response.revision === "number") {
       draftStorageRevision = response.revision
@@ -447,8 +449,13 @@ QtObject {
     }
   }
 
-  function setDraft(text) {
+  function clampText(text) {
     var next = String(text || "")
+    return next.length > maxText ? next.substring(0, maxText) : next
+  }
+
+  function setDraft(text) {
+    var next = clampText(text)
     if (draft === next) return
     draft = next
     draftRevision += 1
@@ -461,15 +468,55 @@ QtObject {
     }
   }
 
+  // IPC prefill. Never assigns or persists until the text is within
+  // maxText, and never overwrites a non-empty draft until the user
+  // accepts the pending replacement.
   function compose(text) {
     if (posting) return "busy"
     if (!ready) return "not-ready"
-    setDraft(text)
+    var next = String(text || "")
+    if (next.length > maxText) {
+      statusText = "Incoming text is over the 5,000-character limit"
+      statusError = true
+      return "too-long"
+    }
+    if (next.length === 0) {
+      pendingPrefill = ""
+      return "ok"
+    }
+    if (draft.length > 0 && draft !== next) {
+      pendingPrefill = next
+      statusText = "Replace the current draft with incoming text?"
+      statusError = false
+      return "pending-replace"
+    }
+    pendingPrefill = ""
+    setDraft(next)
     return "ok"
+  }
+
+  function acceptPrefill() {
+    if (pendingPrefill.length === 0) return false
+    var next = pendingPrefill
+    pendingPrefill = ""
+    statusText = ""
+    statusError = false
+    setDraft(next)
+    return true
+  }
+
+  function declinePrefill() {
+    if (pendingPrefill.length === 0) return
+    pendingPrefill = ""
+    if (!posting && jobState !== "posted" && jobState !== "handoff") {
+      statusText = ""
+      statusError = false
+    }
   }
 
   function submit() {
     if (!ready || posting) return false
+    declinePrefill()
     var snapshot = String(draft || "")
     if (snapshot.trim().length === 0) return false
 
@@ -500,7 +547,7 @@ QtObject {
   }
 
   function queueDraftPersistence(snapshot) {
-    var text = String(snapshot || "")
+    var text = clampText(snapshot)
     if (text === lastPersistedDraft) return
     queueOperation(text === ""
       ? { kind: "draft-clear", args: ["draft", "clear"], text: "" }

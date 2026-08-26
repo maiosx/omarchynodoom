@@ -106,6 +106,19 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
     # Oversize posts are refused before a job is created.
     rc, too_long = run(env, "enqueue", payload={"text": "n" * 5001}, ok=False)
     assert too_long["kind"] == "input", too_long
+    rc, too_long_draft = run(env, "draft", "set", payload={"text": "n" * 5001}, ok=False)
+    assert too_long_draft["kind"] == "input", too_long_draft
+
+    # A corrupt oversize draft.json is clamped on read so the shell never
+    # materializes an unbounded string.
+    oversized = cfg_dir / "draft.json"
+    oversized.write_text(json.dumps({"text": "Z" * 6000, "revision": 7}))
+    os.chmod(oversized, 0o600)
+    _, clamped = run(env, "draft", "get", ok=True)
+    assert clamped["text"] == "Z" * 5000, len(clamped["text"])
+    assert clamped["revision"] == 7
+    oversized.write_text(json.dumps({"text": "", "revision": 0}))
+    os.chmod(oversized, 0o600)
 
     # Detached worker: exactly one claim, replay is refused as busy, clipboard
     # receives the draft on stdin, and xdg-open's argv is a private file URI
