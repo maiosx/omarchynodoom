@@ -1,0 +1,21 @@
+# npost — example configuration (plugin: nodoom.composer)
+#
+# Copy to ~/.config/npost/config.toml and keep it private:
+#     mkdir -m 700 -p ~/.config/npost
+#     cp config.example.toml ~/.config/npost/config.toml
+#     chmod 600 ~/.config/npost/config.toml
+#
+# The backend also generates this template with correct permissions on first run.
+#
+# ------------------------------------------------------------- mode ------
+# Browser composer (the only mode)
+#    Posts are handed off to Nodoom in your browser (https://nodoom.app).
+#    Nothing is published until you press Post there. No API keys needed.
+#
+# copy_draft = true  ->  the draft is copied to the clipboard with
+#    wl-copy (Wayland / Omarchy), xclip, or xsel before the browser opens,
+#    so you can paste into Nodoom's "What's on your mind?" field.
+#    If clipboard copy fails, the private redirect still carries the text
+#    as ?text= — it is never placed in xdg-open's argv.
+
+copy_draft = true

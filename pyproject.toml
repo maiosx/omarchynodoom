@@ -1,0 +1,14 @@
+# nodoom.composer — an Omarchy plugin (see manifest.json for plugin metadata).
+# Development metadata only: the plugin is installed by cloning this
+# repository and at runtime needs nothing beyond the Python standard
+# library and xdg-open. This is not a buildable Python package.
+
+[project]
+name = "nodoom-composer"
+version = "1.0.0"
+description = "Nodoom composer Omarchy plugin: browser-intent handoff to nodoom.app."
+requires-python = ">=3.11,<4"
+dependencies = []
+
+[tool.poetry]
+package-mode = false
