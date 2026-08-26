@@ -221,16 +221,6 @@ Panel {
               event.accepted = true
               root.dismiss()
             }
-            Keys.onReturnPressed: function(event) {
-              if (event.modifiers & Qt.ShiftModifier) return
-              event.accepted = true
-              root.submit()
-            }
-            Keys.onEnterPressed: function(event) {
-              if (event.modifiers & Qt.ShiftModifier) return
-              event.accepted = true
-              root.submit()
-            }
           }
 
           Item {

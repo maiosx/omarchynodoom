@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nodoom.composer",
   "name": "Nodoom composer",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "author": "Nodoom composer",
   "description": "Compose Nodoom posts from the Omarchy bar with a browser handoff. No API keys.",
   "kinds": [

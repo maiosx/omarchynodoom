@@ -39,7 +39,7 @@ Edit `~/.config/npost/config.toml` to set `copy_draft`. The backend also generat
 ## Controls
 
 - Click the **N** icon in the bar to open a fullscreen composer overlay.
-- **Enter** submits; **Shift+Enter** inserts a newline; **Escape** or **Close** dismisses.
+- **Escape** or **Close** dismisses. Enter inserts a newline.
 - The action button is always *Continue in Nodoom*.
 - Drafts persist across panel open/close cycles and are shared across monitors.
 - Posts are capped at 5,000 characters (Nodoom's composer limit). The cap is
