@@ -98,7 +98,6 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
     _, m = run(env, "mode", ok=True)
     assert m["mode"] == "intent" and m["paid"] is False, m
     assert m.get("copyDraft") is True, m
-    assert m.get("autoPaste") is True, m
     cfg_dir = home / ".config" / "npost"
     cfg_file = cfg_dir / "config.toml"
     assert os.lstat(cfg_dir).st_mode & 0o777 == 0o700, "config dir is not 0700"
@@ -110,7 +109,8 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
 
     # Detached worker: exactly one claim, replay is refused as busy, clipboard
     # receives the draft on stdin, and xdg-open's argv is a private file URI
-    # that does not contain the draft (copy succeeded → clean /composer URL).
+    # that does not contain the draft. The redirect HTML carries
+    # /composer?text= so Nodoom prefills the textarea.
     _, q = run(env, "enqueue", payload={"text": "one worker only"}, ok=True)
     jid = q["jobId"]
     worker_claim = runtime / "nodoom.composer" / "jobs" / jid / "worker.json"
@@ -138,17 +138,16 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
     assert opened_arg.startswith("file://") and "one%20worker%20only" not in opened_arg, opened_arg
     redirect = Path(urllib.parse.unquote(urllib.parse.urlparse(opened_arg).path))
     redirect_html = redirect.read_text()
-    assert "https://nodoom.app/composer" in redirect_html
-    assert "one%20worker%20only" not in redirect_html
+    assert "https://nodoom.app/composer?" in redirect_html
+    assert "one%20worker%20only" in redirect_html
     run(env, "ack", jid, ok=True)
     assert not redirect.exists(), "ack retained draft-bearing redirect"
 
     worker_files = list((runtime / "nodoom.composer" / "jobs").glob("*/worker.json"))
     assert not worker_files, worker_files
 
-    # copy_draft = false and auto_paste = false: no clipboard write,
-    # fallback URL carries ?text=.
-    cfg_file.write_text("copy_draft = false\nauto_paste = false\n")
+    # copy_draft = false: no clipboard write; the redirect still carries ?text=.
+    cfg_file.write_text("copy_draft = false\n")
     count.write_text("")
     clip.write_text("")
     _, q = run(env, "enqueue", payload={"text": "no clip"}, ok=True)
@@ -162,47 +161,6 @@ with tempfile.TemporaryDirectory(prefix="npost-reg-") as td:
     assert "no clip" not in opened_arg
     assert clip.read_text() == ""
     run(env, "ack", jid, ok=True)
-    cfg_file.write_text("copy_draft = true\nauto_paste = true\npaste_delay = 0.05\n")
-
-    # auto_paste: fake hyprctl reports a Nodoom window; the worker focuses it,
-    # clicks, and sends Ctrl+V without putting the draft in argv.
-    hypr_log = root / "hypr.log"
-    (bin / "hyprctl").write_text(
-        "\n".join(
-            [
-                "#!/bin/sh",
-                f"printf '%s\\n' \"$*\" >> {hypr_log}",
-                'if [ "$1" = "-j" ] && [ "$2" = "clients" ]; then',
-                """cat <<'EOF'
-[{"address":"0x1","mapped":true,"hidden":false,"at":[0,0],"size":[1200,900],"class":"firefox","title":"Composer | Nodoom — Mozilla Firefox","focusHistoryID":0}]
-EOF""",
-                "fi",
-                "exit 0",
-                "",
-            ]
-        )
-    )
-    os.chmod(bin / "hyprctl", 0o755)
-    env_paste = env.copy()
-    env_paste["WAYLAND_DISPLAY"] = "wayland-0"
-    env_paste.pop("NPOST_NO_AUTOPASTE", None)
-    count.write_text("")
-    clip.write_text("")
-    _, q = run(env_paste, "enqueue", payload={"text": "auto paste me"}, ok=True)
-    jid = q["jobId"]
-    st = wait(env_paste, jid)
-    assert st["state"] == "handoff", st
-    assert st.get("copied") is True, st
-    assert st.get("pasted") is True, st
-    assert clip.read_text() == "auto paste me", clip.read_text()
-    hypr = hypr_log.read_text()
-    assert "focuswindow" in hypr, hypr
-    assert "movecursor" in hypr, hypr
-    assert "sendshortcut" in hypr, hypr
-    assert "auto paste me" not in hypr
-    opened_arg = arg.read_text()
-    assert "auto%20paste%20me" not in opened_arg
-    run(env_paste, "ack", jid, ok=True)
     cfg_file.write_text("copy_draft = true\n")
 
     # Draft flow: enqueue pins the draft revision it submitted, a second

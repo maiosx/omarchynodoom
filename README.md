@@ -16,11 +16,9 @@ Adapted from [bitr0t.omarchytweet](https://github.com/rmacy/omarchytweet) — sa
 
 ## Posting mode
 
-**Browser composer (the only mode, free)** — opens [nodoom.app/composer](https://nodoom.app/composer) via `xdg-open`, copies the draft to the clipboard, then pastes it into the composer textarea (Ctrl+V via hyprctl / wtype / ydotool). You press the final **Post** button in your browser. No API keys needed.
+**Browser composer (the only mode, free)** — opens [nodoom.app/composer](https://nodoom.app/composer) with your draft in `?text=`, so Nodoom prefills *What's on your mind?*. The draft is also copied to the clipboard as a backup. You press the final **Post** button in your browser. No API keys needed.
 
-Stay logged in; if the box is empty, press Ctrl+V.
-
-24-hour vs permanent expiry is chosen in Nodoom's own composer after the handoff.
+Stay logged in. 24-hour vs permanent expiry is chosen in Nodoom's own composer after the handoff.
 
 ## Install
 
@@ -44,7 +42,7 @@ cp ~/.config/omarchy/plugins/nodoom.composer/config.example.toml ~/.config/npost
 chmod 600 ~/.config/npost/config.toml
 ```
 
-Edit `~/.config/npost/config.toml` to set `copy_draft`, `auto_paste`, and `paste_delay`. The backend also generates this template with correct permissions on first run.
+Edit `~/.config/npost/config.toml` to set `copy_draft`. The backend also generates this template with correct permissions on first run.
 
 ## Controls
 
@@ -93,9 +91,9 @@ Runtime state (job files, locks) lives under `$XDG_RUNTIME_DIR/nodoom.composer`.
 
 ## How the handoff stays off `/proc`
 
-`xdg-open` exposes its argument through process metadata. The worker writes an owner-only local HTML redirect (`intent.html` inside the job directory) and passes **only that file URI** to `xdg-open`. The Nodoom composer URL — which may embed draft text as `?text=` if clipboard copy failed — never appears in argv.
+`xdg-open` exposes its argument through process metadata. The worker writes an owner-only local HTML redirect (`intent.html` inside the job directory) and passes **only that file URI** to `xdg-open`. The Nodoom composer URL (`/composer?text=…`) never appears in argv.
 
-Clipboard copy itself is stdin to `wl-copy` / `xclip` / `xsel`, never argv. Auto-paste sends Ctrl+V (clipboard), never types the draft as keystrokes.
+Clipboard copy itself is stdin to `wl-copy` / `xclip` / `xsel`, never argv.
 
 ## Development
 
@@ -110,7 +108,7 @@ Runtime never depends on Poetry.
 
 - `~/.config/npost` is created with mode 0700; `config.toml` with 0600. Symlinks, foreign owners, and group/other permission bits are refused.
 - Secrets are never logged, echoed, or included in JSON output (this plugin has none).
-- The handoff URL embeds draft text only as a fallback and is never returned in JSON or logs.
+- The handoff URL embeds draft text as `?text=` so Nodoom can prefill the composer, and is never returned in JSON or logs.
 - Post text arrives via stdin or job files — never via shell interpolation or command-line arguments.
 
 ## Uninstall

@@ -9,19 +9,12 @@
 #
 # ------------------------------------------------------------- mode ------
 # Browser composer (the only mode)
-#    Posts are handed off to Nodoom at https://nodoom.app/composer.
-#    Nothing is published until you press Post there. No API keys needed.
+#    Posts are handed off to https://nodoom.app/composer?text=…
+#    Nodoom prefills the textarea from that query. Nothing is published
+#    until you press Post there. No API keys needed.
 #
-# copy_draft = true  ->  the draft is copied to the clipboard with
-#    wl-copy (Wayland / Omarchy), xclip, or xsel before the browser opens.
-#
-# auto_paste = true  ->  after /composer loads, the plugin focuses the
-#    window, clicks the textarea, and pastes with Ctrl+V (hyprctl on
-#    Omarchy, or wtype / ydotool / xdotool). You still press Post.
-#
-# paste_delay = 2.2  ->  seconds to wait for Nodoom to render before pasting.
-#    Raise this if the composer opens empty on a slow connection.
+# copy_draft = true  ->  also copy the draft to the clipboard with
+#    wl-copy (Wayland / Omarchy), xclip, or xsel, as a backup. Press
+#    Ctrl+V in the composer if the box is empty.
 
 copy_draft = true
-auto_paste = true
-paste_delay = 2.2
