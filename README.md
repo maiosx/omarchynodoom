@@ -20,6 +20,14 @@ omarchy plugin add https://github.com/maiosx/omarchynodoom.git --enable
 
 Then restart the shell if the bar icon does not appear: `omarchy restart shell`.
 
+Add a Hyprland binding to `~/.config/hypr/bindings.lua`:
+
+```lua
+o.bind("SUPER + N", "Nodoom Composer", "omarchy-shell nodoom.composer toggle")
+```
+
+Choose any unused chord if `SUPER + X` is already bound.
+
 From a local checkout:
 
 ```sh
