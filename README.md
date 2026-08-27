@@ -44,10 +44,39 @@ Edit `~/.config/npost/config.toml` to set `copy_draft`. The backend also generat
 - Drafts persist across panel open/close cycles and are shared across monitors.
 - Posts are capped at 500 characters. The cap is
   enforced in the panel, at the QML IPC boundary, and again in the backend.
-- External prefill (`omarchy-shell nodoom.composer.compose compose "hello"`)
-  is rejected if over 500 characters. If a draft already exists, the panel
-  asks **Replace** / **Keep** before overwriting it; the incoming text is not
-  persisted until you confirm.
+
+## IPC
+
+The plugin exposes two `omarchy-shell` targets.
+
+### Overlay
+
+```sh
+omarchy-shell nodoom.composer toggle
+omarchy-shell nodoom.composer open
+omarchy-shell nodoom.composer close
+```
+
+`show` and `hide` are aliases for `open` and `close`.
+
+### Prefill
+
+```sh
+omarchy-shell nodoom.composer.compose compose "hello"
+```
+
+Opens the overlay and stages the text. The handler returns one of:
+
+| Result | Meaning |
+| --- | --- |
+| `ok` | Draft accepted (empty text is a no-op) |
+| `pending-replace` | A draft already exists; confirm **Replace** or **Keep** in the overlay. Incoming text is not persisted until you confirm. |
+| `too-long` | Over 500 characters; rejected before the service stores or persists it |
+| `busy` | A handoff is already in progress |
+| `not-ready` | Composer service is still starting |
+| `service-unavailable` | Bar widget / service did not load |
+
+Text is a single string argument. Do not put post text on the shell command line from untrusted input.
 
 ## Optional CLI
 
